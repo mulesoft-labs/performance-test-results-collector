@@ -12,6 +12,7 @@ Retired this application from performance automation As NewRelic has rich API's 
 # Repo
 
 - It contains Mule app for deployment
-- Shell script to invoke this application.
+- [Shell script][1] to invoke this application.
 
 
+[1]:https://github.com/mulesoft-labs/performance-test-results-collector/blob/master/collect_and_push_results_to_elastic_v3.sh
