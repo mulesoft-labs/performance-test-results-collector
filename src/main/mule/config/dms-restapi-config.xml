@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<http:request-config name="DMS_v2_HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="373d378a-c9f7-4202-8cb0-2a625c943512" basePath="/api/v2" >
+		<http:request-connection host="deep-monitoring-service-v2.us-e1.cloudhub.io" />
+	</http:request-config>
+</mule>

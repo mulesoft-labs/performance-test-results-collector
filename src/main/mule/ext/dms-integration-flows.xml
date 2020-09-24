@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:deep-monitoring-service="http://www.mulesoft.org/schema/mule/deep-monitoring-service" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/deep-monitoring-service http://www.mulesoft.org/schema/mule/deep-monitoring-service/current/mule-deep-monitoring-service.xsd">
+	<sub-flow name="set-newrelic-default-metric-names" doc:id="fecd00c8-93ae-4969-9adc-0ca0376b7eed" >
+		<ee:transform doc:name="Build NR default metric names query params" doc:id="15e0ac7c-9479-4889-90ff-d22a2bd36682">
+			<ee:variables>
+				<ee:set-variable resource="dw/default_newrelic_metric_names.dwl" variableName="defaultNewRelicMetricNames" />
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="resolve-newrelic-app-id" doc:id="89d234d2-856e-41bb-8d6d-7d92c0cad854" >
+		<ee:transform doc:name="Set appId" doc:id="bed33bad-ba28-41b4-a822-3eb0bf1d5f91">
+						<ee:message>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="appId"><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+		<choice doc:name="Choice" doc:id="06f6dece-f46e-4aad-9f59-f4a6620754ff">
+			<when expression='#[not (vars.appId default "" matches /\d+/)]'>
+				<http:request method="GET" doc:name="Retrieve NewRelic summarized app metrics with DMS" doc:id="0916ff70-5a73-4849-a9d5-50e4e0008cdd" config-ref="DMS_v2_HTTP_Request_configuration" path="/discover/newrelic/applications">
+			<http:body><![CDATA[#[null]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:query-params><![CDATA[#[output application/java
+---
+{
+	"filter[name]": payload
+}]]]>
+			</http:query-params>
+		</http:request>
+				<ee:transform doc:name="Extract app id" doc:id="4e146e2b-6826-4163-96f9-117e0e5507cd">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="appId"><![CDATA[%dw 2.0
+output application/java
+---
+payload.applications[0].id]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+						</when>
+					</choice>
+	</sub-flow>
+	<flow name="retrieve-newrelic-metrics-with-dms-flow" doc:id="4dcda040-46f3-46dd-8602-b9397c275f7b" >
+		<ee:transform doc:name="Build NewRelic app Ids array" doc:id="4a864189-c8bc-49b7-94a8-5557a9a6d173" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="newrelicAppIds" ><![CDATA[%dw 2.0
+output application/json
+---
+[vars.config.newrelic_app_id] ++
+(vars.downstreamImpactNewRelicAppIds default [])]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<choice doc:name="NewRelic app id present?" doc:id="4962dc19-0d5f-4c45-b6c2-7dc1dd6221e1" >
+			<when expression="#[sizeOf(vars.newrelicAppIds default []) &gt; 0]">
+				<foreach doc:name="For Each NewRelic app id" doc:id="5103d408-2b1f-4be3-84d2-5e0a4ab60fb0" collection="vars.newrelicAppIds">
+					<flow-ref doc:name="resolve-newrelic-app-id" doc:id="cec3a43d-fc47-423c-820b-1661ac52037f" name="resolve-newrelic-app-id"/>
+					<scatter-gather doc:name="Scatter-Gather" doc:id="c92c8de0-e748-438f-a00a-bf8b1c07f4df">
+					<route>
+						<flow-ref doc:name="Retrieve DMS summarized app metrics" doc:id="b8036578-bd5c-4091-9e29-ed5ec030915b" name="retrieve-dms-summarized-app-metrics-flow"/>
+						<ee:transform doc:name="Set dmsSummarizedAppMetrics" doc:id="3d16dcc2-ddfa-41df-b8b1-9e403635be01" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="dmsSummarizedAppMetrics" ><![CDATA[%dw 2.0
+output application/json
+---
+(vars.dmsSummarizedAppMetrics default[]) ++ payload]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</route>
+					<route>
+						<flow-ref doc:name="Retrieve DMS summarized host metrics" doc:id="de05aea7-de4e-41fa-9fba-42cb390d4afb" name="retrieve-dms-summarized-host-metrics-flow" />
+					</route>
+					<route>
+						<flow-ref doc:name="Retrieve DMS detailed app metrics" doc:id="28c1291f-ec7d-4996-b74b-55edb83821ee" name="retrieve-dms-detailed-app-metrics-flow" />
+						<ee:transform doc:name="Set dmsDetailedAppMetrics" doc:id="3244eabb-89be-4534-bea0-259d4b7d7636" >
+							<ee:message >
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="dmsDetailedAppMetrics" ><![CDATA[%dw 2.0
+output application/json
+---
+flatten((vars.dmsDetailedAppMetrics default[]) ++ payload)]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+					</route>
+					<route>
+						<flow-ref doc:name="Retrieve DMS detailed host metrics" doc:id="1dae05df-2a38-43a9-bb08-5a94eb848d61" name="retrieve-dms-detailed-host-metrics-flow" />
+					</route>
+				</scatter-gather>
+				</foreach>
+			</when>
+			<otherwise>
+<!-- 				<raise-error doc:name="No newrelic_app_id!" doc:id="787600de-90d9-499f-a511-4ee822e99fbc" type="ANY" description="There is no newrelic_app_id present in the request. Make sure you are specifying the NewRelic's app id in the input configuration or that the $NEW_RELIC_APP_ID env variable exists in your execution context."/> -->
+				<logger level="WARN" doc:name="No newrelic_app_id!" doc:id="ae44e5f1-03ca-43f5-864e-4b0694f089f8" message="There is no newrelic_app_id present in the request. Make sure you are specifying the NewRelic's app id in the input configuration or that the $NEW_RELIC_APP_ID env variable exists in your execution context."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="retrieve-dms-summarized-app-metrics-flow" doc:id="d65a4abd-59e3-4bb8-b63f-ea4e925ac00c" >
+		<flow-ref doc:name="set-newrelic-default-metric-names" doc:id="11c13249-1270-4e4b-9b3b-f0d482889b4a" name="set-newrelic-default-metric-names"/>
+		<http:request method="GET" doc:name="Retrieve NewRelic summarized app metrics with DMS" doc:id="fd7d4f09-7315-4fb4-a1b1-e0b1b7bc3008" config-ref="DMS_v2_HTTP_Request_configuration" path="/metrics/newrelic/applications/{app_id}">
+			<http:body ><![CDATA[#[null]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"app_id": vars.appId
+}]]]></http:uri-params>
+			<http:query-params><![CDATA[#[output application/java
+---
+	vars.defaultNewRelicMetricNames ++ vars.newrelicAdjustedTimeWindow ++ { summarize: true }
+]]]>
+			</http:query-params>
+		</http:request>
+		<ee:transform doc:name="Prepend mon_nr_" doc:id="3e1b6d59-16aa-433c-bbb7-5051f33a3bc7" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (
+	$ mapObject (value, key) -> {
+		("mon_nr_" ++ key): value
+	}
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="retrieve-dms-summarized-host-metrics-flow" doc:id="e561bb21-5d79-4284-8015-ceb3a9c6aed8">
+		<flow-ref doc:name="set-newrelic-default-metric-names" doc:id="e264d25a-07fb-42f8-a9b7-e9a6bf9a2b33" name="set-newrelic-default-metric-names" />
+		<http:request method="GET" doc:name="Query NewRelic application hosts" doc:id="5aeef6d5-f577-44ab-82b7-71ba13d24bd0" config-ref="DMS_v2_HTTP_Request_configuration" path="/discover/newrelic/applications/{app_id}/hosts">
+			<http:body><![CDATA[#[null]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"app_id" : vars.appId
+}]]]></http:uri-params>
+		</http:request>
+		<foreach doc:name="For Each Host" doc:id="100f4ddb-7800-4bdd-9b37-ea2e0efaeec1" collection="payload.application_hosts">
+			<http:request method="GET" doc:name="Retrieve NewRelic summarized host metrics with DMS" doc:id="a2f1e9cf-cbfd-45e2-b4a6-d411fadcd45e" config-ref="DMS_v2_HTTP_Request_configuration" path="/metrics/newrelic/applications/{app_id}/hosts/{host_id}">
+			<http:body><![CDATA[#[null]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"app_id": vars.appId,
+	"host_id": payload.id
+}]]]></http:uri-params>
+			<http:query-params><![CDATA[#[output application/java
+---
+	vars.defaultNewRelicMetricNames ++ vars.newrelicAdjustedTimeWindow ++ { summarize: true }
+]]]>
+			</http:query-params>
+		</http:request>
+			<ee:transform doc:name="Prepend mon_nr_" doc:id="8e22a5ed-ea6d-4985-8901-3007255e75f2">
+			<ee:message>
+			</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="dmsSummarizedHostMetrics" ><![CDATA[%dw 2.0
+output application/json
+---
+flatten((vars.dmsSummarizedHostMetrics default []) + (payload map (
+	$ mapObject (value, key) -> {
+		("mon_nr_" ++ key): value
+	}
+)))]]></ee:set-variable>
+				</ee:variables>
+		</ee:transform>
+		</foreach>
+	</flow>
+	<flow name="retrieve-dms-detailed-app-metrics-flow" doc:id="2b113ac7-6b48-440f-9112-cc65c45296b4" >
+		<flow-ref doc:name="set-newrelic-default-metric-names" doc:id="d74830d9-f321-4acd-8dea-fc961b897693" name="set-newrelic-default-metric-names"/>
+		<http:request method="GET" doc:name="Retrieve NewRelic summarized app metrics with DMS" doc:id="5a5e04f5-d9f5-4e2a-bcb9-a4a629100a43" config-ref="DMS_v2_HTTP_Request_configuration" path="/metrics/newrelic/applications/{app_id}">
+			<http:body ><![CDATA[#[null]]]></http:body>
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"app_id": vars.appId
+}]]]></http:uri-params>
+			<http:query-params><![CDATA[#[output application/java
+---
+	vars.defaultNewRelicMetricNames ++ vars.newrelicAdjustedTimeWindow
+]]]>
+			</http:query-params>
+		</http:request>
+		<ee:transform doc:name="Prepend mon_nr_" doc:id="6af793a3-0523-40a8-b25e-32a74b707100" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload map (
+	$ mapObject (value, key) -> {
+		("mon_nr_" ++ key): value
+	}
+)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="retrieve-dms-detailed-host-metrics-flow" doc:id="7019420b-53f0-495d-a44a-c8f2e453778a">
+		<flow-ref doc:name="set-newrelic-default-metric-names" doc:id="a68d510d-18f7-48cb-bbb1-8e1f5def7fd2" name="set-newrelic-default-metric-names" />
+		<http:request method="GET" doc:name="Query NewRelic application hosts" doc:id="56919d34-9ea3-47cd-9e39-7e10a8332a34" config-ref="DMS_v2_HTTP_Request_configuration" path="/discover/newrelic/applications/{app_id}/hosts">
+			<http:body><![CDATA[#[null]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"app_id" : vars.appId
+}]]]></http:uri-params>
+		</http:request>
+		<foreach doc:name="For Each Host" doc:id="d0288f44-51aa-47d2-8506-9f888de5ca14" collection="payload.application_hosts">
+			<http:request method="GET" doc:name="Retrieve NewRelic detailed host metrics with DMS" doc:id="b1b3956c-049d-425c-a9cb-18a0444c21b4" config-ref="DMS_v2_HTTP_Request_configuration" path="/metrics/newrelic/applications/{app_id}/hosts/{host_id}">
+			<http:body><![CDATA[#[null]]]></http:body>
+			<http:headers><![CDATA[#[output application/java
+---
+{
+	"Accept" : "application/json"
+}]]]></http:headers>
+			<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"app_id": vars.appId,
+	"host_id": payload.id
+}]]]></http:uri-params>
+			<http:query-params><![CDATA[#[output application/java
+---
+	vars.defaultNewRelicMetricNames ++ vars.newrelicAdjustedTimeWindow
+]]]>
+			</http:query-params>
+		</http:request>
+			<ee:transform doc:name="Prepend mon_nr_" doc:id="f457ed68-a2a9-4831-a782-c310f453ef3c">
+			<ee:message>
+			</ee:message>
+				<ee:variables >
+					<ee:set-variable variableName="dmsDetailedHostMetrics" ><![CDATA[%dw 2.0
+output application/json
+---
+flatten((vars.dmsDetailedHostMetrics default []) + (payload map (
+	$ mapObject (value, key) -> {
+		("mon_nr_" ++ key): value
+	}
+)))]]></ee:set-variable>
+				</ee:variables>
+		</ee:transform>
+		</foreach>
+	</flow>
+</mule>

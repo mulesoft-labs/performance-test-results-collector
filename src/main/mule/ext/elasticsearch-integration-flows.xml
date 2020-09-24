@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:elasticsearch="http://www.mulesoft.org/schema/mule/elasticsearch"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/elasticsearch http://www.mulesoft.org/schema/mule/elasticsearch/current/mule-elasticsearch.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="push-everything-to-es-flow" doc:id="596e6297-4ff6-4c94-a183-9b39ed45da9d" >
+		<scatter-gather doc:name="Scatter-Gather" doc:id="b1606d66-c342-4362-8571-0781714f1cfd" maxConcurrency="1">
+			<route >
+				<set-variable value="platform-ci-server-build-info" doc:name="Set ES index name - platform-ci-server-build-info" doc:id="e325bce0-49c8-49ca-bb3d-2cf3ddedee62" variableName="esIndexName"/>
+				<flow-ref doc:name="push-ci-build-info-to-es-flow" doc:id="a9a14963-2ce1-40e4-b84f-6844cfd7008b" name="push-ci-build-info-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-test-results-summarized" doc:name="Set ES index name - platform-test-results-summarized" doc:id="e325bce0-49c8-49ca-bb3d-2cf3ddedee62" variableName="esIndexName"/>
+				<flow-ref doc:name="push-summarized-test-results-to-es-flow" doc:id="655a3378-82e3-4633-b1a4-47cdbee52f01" name="push-summarized-test-results-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-test-results-detailed" doc:name="Set ES index name - platform-test-results-detailed" doc:id="e325bce0-49c8-49ca-bb3d-2cf3ddedee62" variableName="esIndexName"/>
+				<flow-ref doc:name="push-detailed-test-results-to-es-flow" doc:id="655a3378-82e3-4633-b1a4-47cdbee52f01" name="push-detailed-test-results-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-dms-newrelic-app-summarized" doc:name="Set ES index name - platform-dms-newrelic-app-summarized" doc:id="673e5e13-ecac-4af3-8ec7-01898b685383" variableName="esIndexName"/>
+				<flow-ref doc:name="push-summarized-dms-app-metrics-to-es-flow" doc:id="0b4099f1-77a6-4ee4-ab80-0d0f4e85caf9" name="push-summarized-dms-app-metrics-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-dms-newrelic-host-summarized" doc:name="Set ES index name - platform-dms-newrelic-host-summarized" doc:id="1a27fdbb-3fd2-4b14-905b-ed4fc8d41148" variableName="esIndexName"/>
+				<flow-ref doc:name="push-summarized-dms-host-metrics-to-es-flow" doc:id="11c9c1f4-84df-4713-ab19-783f798e9380" name="push-summarized-dms-host-metrics-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-dms-newrelic-app-detailed" doc:name="Set ES index name - platform-dms-newrelic-app-detailed" doc:id="e8a1817a-b886-4dc0-a5b9-d1a732417a12" variableName="esIndexName"/>
+				<flow-ref doc:name="push-detailed-dms-app-metrics-to-es-flow" doc:id="d8755a44-e0d6-4b97-a497-47f85d665b87" name="push-detailed-dms-app-metrics-to-es-flow"/>
+			</route>
+			<route >
+				<set-variable value="platform-dms-newrelic-host-detailed" doc:name="Set ES index name - platform-dms-newrelic-host-detailed" doc:id="fecacdd6-e714-461c-b9da-4dc61827d7dc" variableName="esIndexName"/>
+				<flow-ref doc:name="push-detailed-dms-host-metrics-to-es-flow" doc:id="18ba5239-ce63-4cfa-8ac8-c38cb8e22c87" name="push-detailed-dms-host-metrics-to-es-flow"/>
+			</route>
+		</scatter-gather>
+	</sub-flow>
+	<flow name="push-ci-build-info-to-es-flow" doc:id="b09b8588-65a9-4df5-89a0-c841cb3b58c6" >
+		<choice doc:name="Is ciBuildInfo present?" doc:id="799dfc7a-7350-4a6d-8778-c293168cf396">
+			<when expression="vars.ciBuildInfo != null">
+				<http:request method="PUT" doc:name="Store CI build information in ES" doc:id="05057348-a024-47b4-8c2a-b8f2bebee29f" config-ref="ElasticSearch_Config" path='#["/platform-ci-server-build-info/doc/" ++ (vars.config.build_tag default "")]'>
+			<http:body><![CDATA[#[vars.ciBuildInfo]]]></http:body>
+		</http:request>
+			</when>
+			<otherwise>
+				<logger level="WARN" doc:name="Logger" doc:id="5539ff43-7c16-4be3-9864-9ce71017eb48" message="There is no CI server build information to push to ElasticSearch. Make sure the env variable BUILD_TAG is defined in your context."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-summarized-test-results-to-es-flow" doc:id="1b0e2327-7a5e-4231-b131-e7a0086abbe6" >
+		<choice doc:name="Is perfTestResultsSummarized present?" doc:id="4a01e52f-a4b7-4242-a2c7-5daf7d54d174" >
+			<when expression="vars.perfTestResultsSummarized != null">
+				<http:request method="PUT" doc:name="Store Summarized perf test results information in ES" doc:id="90b8200e-3015-404e-8ed0-887f8199eeb2" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/" ++
+vars.perfTestResultsSummarized.scn_build_tag ++ "_" ++
+"sum_" ++
+(vars.perfTestResultsSummarized.timestamp as DateTime as Number)]'>
+			<http:body><![CDATA[#[vars.perfTestResultsSummarized]]]></http:body>
+					<http:uri-params ><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName
+}]]]></http:uri-params>
+		</http:request>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="cf5054d2-f3af-447a-8860-9894a61d6505" message="There is no perfTestResultsSummarized information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-detailed-test-results-to-es-flow" doc:id="2945f1f8-b8af-4361-b35d-b802742c0c55" >
+		<choice doc:name="Is perfTestResultsDetailed present?" doc:id="ebf2608d-58ed-423c-bf1d-f8695963809f" >
+			<when expression="vars.perfTestResultsDetailed != null">
+				<foreach doc:name="For Each Detail" doc:id="37a2733d-03cb-4540-8711-b537f6899152" collection="vars.perfTestResultsDetailed">
+					<ee:transform doc:name="Generate doc id" doc:id="9642486c-8b93-4c62-9965-24e8a1c8afd0" >
+						<ee:message >
+						</ee:message>
+						<ee:variables >
+							<ee:set-variable variableName="detailedDocId" ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+
+output application/java
+---
+payload.scn_build_tag ++ "_" ++
+"det_" ++
+toHex(payload.test_label) ++ "_" ++
+(payload.timestamp as DateTime as Number)]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+					<http:request method="PUT" doc:name="Store detailed perf test results information in ES" doc:id="60d4c55d-77ff-4ecf-9318-6903de15571e" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/{doc_id}"]'>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName,
+	"doc_id" : vars.detailedDocId
+}]]]></http:uri-params>
+		</http:request>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="98458b60-dc97-429d-8f34-fac4ca7dbf07" message="There is no perfTestResultsDetailed information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-summarized-dms-app-metrics-to-es-flow" doc:id="d45c40ea-271d-4745-80a8-9e775b904607" >
+		<choice doc:name="Is dmsSummarizedAppMetrics present?" doc:id="b9c8c51f-6b9a-4f02-b08a-2a66d310ebf8" >
+			<when expression="vars.dmsSummarizedAppMetrics != null">
+				<foreach doc:name="For Each App" doc:id="da66ae89-ea91-4232-8163-0d9e59b14dde" collection="vars.dmsSummarizedAppMetrics">
+					<http:request method="PUT" doc:name="Store summarized DMS app metrics information in ES" doc:id="933e823b-7743-45a3-8836-e4f13dbf1df6" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/" ++
+payload.scn_build_tag ++ "_" ++
+"sum_" ++
+payload.mon_nr_application_id ++ "_" ++
+(payload.timestamp as DateTime as Number) ++ "_" ++
+payload.mon_nr_timeslice_period_seconds]'>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName
+}]]]></http:uri-params>
+		</http:request>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="16716ac7-8939-4ffa-8993-bd3a2285b3f4" message="There is no dmsSummarizedAppMetrics information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-summarized-dms-host-metrics-to-es-flow" doc:id="7e921e7d-9467-41ff-9c5c-c37397419bc6" >
+		<choice doc:name="Is dmsSummarizedHostMetrics present?" doc:id="681d5599-1f61-4a82-b789-d5d415c9a972" >
+			<when expression="vars.dmsSummarizedHostMetrics != null">
+				<foreach doc:name="For Each Host" doc:id="4625dd1d-b387-4c9d-bd63-8274b52b1af2" collection="vars.dmsSummarizedHostMetrics">
+					<http:request method="PUT" doc:name="Store summarized DMS host metrics information in ES" doc:id="f515a494-1868-4b73-8779-e4192a1caebe" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/" ++
+payload.scn_build_tag ++ "_" ++
+"sum_" ++
+payload.mon_nr_application_id ++ "_" ++
+payload.mon_nr_host_id ++ "_" ++
+(payload.timestamp as DateTime as Number) ++ "_" ++
+payload.mon_nr_timeslice_period_seconds]'>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName
+}]]]></http:uri-params>
+		</http:request>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="99f590f3-1168-43a6-ba0d-1da456ba89da" message="There is no dmsSummarizedHostMetrics information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-detailed-dms-app-metrics-to-es-flow" doc:id="92f5a363-fe6a-45d0-9565-785d75d6ce3d" >
+		<choice doc:name="Is dmsDetailedAppMetrics present?" doc:id="35a2947f-a38c-47d0-931f-0f0909299a3a" >
+			<when expression="vars.dmsDetailedAppMetrics != null">
+				<foreach doc:name="For Each App" doc:id="151be471-b4c7-44cd-8cb5-2f8bc582cf1f" collection="vars.dmsDetailedAppMetrics">
+					<http:request method="PUT" doc:name="Store detailed DMS app metrics information in ES" doc:id="4eb7d12b-abb8-4d8c-897b-ad5981cbb318" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/" ++
+payload.scn_build_tag ++ "_" ++
+"det_" ++
+payload.mon_nr_application_id ++ "_" ++
+(payload.timestamp as DateTime as Number) ++ "_" ++
+payload.mon_nr_timeslice_period_seconds]'>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName
+}]]]></http:uri-params>
+		</http:request>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="ef75bf7e-0e3b-400f-9da5-cc701a3bbe0e" message="There is no dmsDetailedAppMetrics information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="push-detailed-dms-host-metrics-to-es-flow" doc:id="714a0912-d3f1-4b1b-a7f6-c5c5e95e04dc" >
+		<choice doc:name="Is dmsDetailedHostMetrics present?" doc:id="b3f4fd4f-1b96-4d8f-ba1e-07b1a732d73d" >
+			<when expression="vars.dmsDetailedHostMetrics != null">
+				<foreach doc:name="For Each Host" doc:id="4b40b8be-d623-4a46-a835-41799d88bdae" collection="vars.dmsDetailedHostMetrics">
+					<http:request method="POST" doc:name="Store detailed DMS host metrics information in ES" doc:id="b0e9ac95-8a37-4001-9f30-36eb48e32899" config-ref="ElasticSearch_Config" path='#["/{index_name}/doc/" ++
+payload.scn_build_tag ++ "_" ++
+"det_" ++
+payload.mon_nr_application_id ++ "_" ++
+payload.mon_nr_host_id ++ "_" ++
+(payload.timestamp as DateTime as Number) ++ "_" ++
+payload.mon_nr_timeslice_period_seconds]'>
+					<http:uri-params><![CDATA[#[output application/java
+---
+{
+	"index_name" : vars.esIndexName
+}]]]></http:uri-params>
+		</http:request>
+				</foreach>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="6b92a759-882e-4f66-8a25-2713b241f1d9" message="There is no dmsDetailedHostMetrics information to push to ElasticSearch."/>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

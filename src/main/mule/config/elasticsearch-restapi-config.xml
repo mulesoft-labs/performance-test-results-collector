@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<http:request-config name="ElasticSearch_Config" doc:name="ElasticSearch config" doc:id="ba240820-8a9c-4030-b502-85fb72dc498f" >
+		<http:request-connection host="#[Mule::p('secure::elasticsearch.' ++ vars.config.elasticsearch_env ++ '.host')]" port="#[Mule::p('secure::elasticsearch.' ++ vars.config.elasticsearch_env ++ '.port')]" protocol="HTTPS" tlsContext="ElasticSearch_TLS_Context">
+			<http:authentication >
+		        <http:basic-authentication username="#[Mule::p('secure::elasticsearch.' ++ vars.config.elasticsearch_env ++ '.user')]" password="#[Mule::p('secure::elasticsearch.' ++ vars.config.elasticsearch_env ++ '.password')]"/>
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+	<tls:context name="ElasticSearch_TLS_Context" doc:name="TLS Context" doc:id="d1412d66-9d21-4d70-8e3e-xºd68073384932" >
+		<tls:trust-store insecure="true" />
+	</tls:context>
+</mule>

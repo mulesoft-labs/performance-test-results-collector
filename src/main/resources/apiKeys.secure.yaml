@@ -1,0 +1,20 @@
+hudson:
+  user: "![fMxk39/tdupQ5zev2S99uA==]"
+  password: "![Kq5rFRXO83rEgb1JETXwrQ==]"
+  
+jenkins:
+  user: "![fMxk39/tdupQ5zev2S99uA==]"
+  apiToken: "![D8aMMavTQAV8gY5GA0V1wTti+sFTyYFU2kEtzjyMUSbz5wjW0A82qQ==]"
+
+# https is assumed
+elasticsearch:
+  sandbana:
+    host: "18.208.43.160"
+    port: "9200"
+    user: "![fMxk39/tdupQ5zev2S99uA==]"
+    password: "![Kq5rFRXO83rEgb1JETXwrQ==]"
+  production:
+    host: "stats.perf.anypoint.mulesoft.com"
+    port: "9443"
+    user: "![fMxk39/tdupQ5zev2S99uA==]"
+    password: "![Kq5rFRXO83rEgb1JETXwrQ==]"

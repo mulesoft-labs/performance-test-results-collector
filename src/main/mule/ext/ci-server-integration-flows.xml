@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd 
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+	<flow name="retrieve-ci-build-information-flow" doc:id="aa1845ce-8119-4cb2-a30e-9f0a8d74e6c4" >
+		<choice doc:name="build_tag present?" doc:id="d98a95b4-f58e-4b5c-8eb8-0dbd5b891146" >
+			<when expression="#[vars.config.build_tag != null and vars.config.build_tag != '']">
+				<ee:transform doc:name="Parse build_url and decompose build_tag" doc:id="5c58e5a2-fd6f-46e2-a023-c559951ddcd4">
+					<ee:message>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="decomposedBuildTag" ><![CDATA[%dw 2.0
+import * from dw::core::URL
+
+output application/json
+
+var buildTagParts = match(vars.config.build_tag default "", /(hudson|jenkins)-(.+)-(\d+)/)
+var parsedBuildURL = parseURI(vars.config.build_url default "")
+var fullJobName = ((parsedBuildURL.path default "") replace "/job" with "") replace /\/(.+)\/(\d+)\// with $[1]
+var jobName = (fullJobName splitBy("/"))[-1]
+---
+{
+	ci_server: buildTagParts[1],
+	ci_request_path: parsedBuildURL.path,
+	full_job_name: fullJobName,
+	job_name: jobName,
+	build_number: buildTagParts[3],
+	job: "$jobName-$(buildTagParts[3])"
+}]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<choice doc:name="CI server?" doc:id="86d7f26d-0322-4bb5-8731-651211edcaac">
+					<when expression='#[vars.decomposedBuildTag.ci_server == "jenkins"]'>
+						<http:request method="GET" doc:name="Query build info from Jenkins CI server" doc:id="bb4b7ac9-ea2b-45dd-9ceb-f435c77576b8" config-ref="Jenkins_CI_HTTP_Request_configuration" path="#[(vars.decomposedBuildTag.ci_request_path default &quot;&quot;) ++ '/api/json']" outputMimeType="application/json" />
+					</when>
+					<otherwise >
+						<http:request method="GET" doc:name="Query build info from Hudson CI server" doc:id="37a2b7cb-2670-422d-b1d8-5a0362c49d93" config-ref="Hudson_CI_HTTP_Request_configuration" path="#[(vars.decomposedBuildTag.ci_request_path default &quot;&quot;) ++ '/api/json']" outputMimeType="application/json" />
+					</otherwise>
+				</choice>
+				<ee:transform doc:name="Extract CI build global info" doc:id="44eabf8d-4e4c-4110-857a-dbe71cd6f1ca" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+import modules::NewRelicUtils
+
+var newrelicAdjustedTimeWindow = NewRelicUtils::adjustNewRelicTimeWindowIfNeeded((payload.timestamp/1000) as DateTime, vars.config.test_end_time)
+var wholeTestMonNewRelicLink = NewRelicUtils::buildNewRelicLink(vars.config.newrelic_app_id, newrelicAdjustedTimeWindow.from, newrelicAdjustedTimeWindow.to)
+
+output application/json
+---
+PlatformIndexMapper::mapCiBuildInfo(
+	vars.config,
+	vars.decomposedBuildTag,
+	payload,
+	wholeTestMonNewRelicLink
+)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<raise-error doc:name="No build_tag!" doc:id="ec0ec712-5f8f-40f3-a277-70704b8c5b42" type="ANY" description="There is no build_tag present in the request. Make sure you are specifying the CI server build_tag in the input configuration or that the $BUILD_TAG env variable exists in your execution context."/>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>

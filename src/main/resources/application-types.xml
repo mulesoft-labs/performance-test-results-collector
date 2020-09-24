@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<types:mule xmlns:types="http://www.mulesoft.org/schema/mule/types">
+  <types:catalog>
+    <types:type name="DownstreamImpactCsv" format="csv">
+      <types:shape format="weave"><![CDATA[%dw 2.0
+type DownstreamImpactCsv = Array<{| column_0: String |}> {"MetadataFormat": "csv"}
+
+]]></types:shape>
+      <types:properties>
+        <types:property name="headerLineNumber" value="0"/>
+        <types:property name="header" value="false"/>
+        <types:property name="isQuotedString" value="false"/>
+      </types:properties>
+    </types:type>
+  </types:catalog>
+  <types:enrichment select="#3667fc80-fb06-47ed-86e4-47885178a298"/>
+  <types:enrichment select="#e88ce06e-618e-4dc8-bd89-91669a4ae941"/>
+  <types:enrichment select="#13219ebf-4388-496a-801e-1b646443a681">
+    <types:processor-declaration>
+      <types:input-event>
+        <types:message>
+          <types:payload type="DownstreamImpactCsv"/>
+        </types:message>
+      </types:input-event>
+    </types:processor-declaration>
+  </types:enrichment>
+  <types:enrichment select="#5c58e5a2-fd6f-46e2-a023-c559951ddcd4"/>
+</types:mule>

@@ -1,0 +1,45 @@
+{
+	"build_tag": "test",
+	"test_start_time": "2018-10-26T20:54:31",
+	"test_end_time": "2018-10-26T20:54:44",
+	"first_test_start_time": "2018-10-26T20:50:00",
+	"category": "Exchange",
+	"component": "VCS",
+	"test_case": "Even distribution",
+	"jmx_file": "VCS.mixedAPIs.jmx",
+	"tag": "v0.3.874 0efa0eb348a1d7fc38f6f4ae6dda16d8b8ea9637 0efa0eb348a1d7fc38f6f4ae6dda16d8b8ea9637",
+	"threads": 10,
+	"ramp_up_time": 30,
+	"duration": 180,
+	"jmeter_summary_csv": "VCS.mixedAPIs.summary.csv",
+	"k8s_metrics": "",
+	"sar_metrics": [
+		{
+			"file_name": "",
+			"content": ""
+		},
+		{
+			"file_name": "",
+			"content": ""
+		}
+	],
+	"test_specific_params": {
+		"payload_file": "1KB.payload",
+		"payload_size_bytes": 1000,
+		"test_description": "This is the optional test description"
+	},
+	"dms_metrics": [
+		{
+			"app_identifier": "",
+			"metric_names": [
+				""
+			]
+		},
+		{
+			"app_identifier": "",
+			"metric_names": [
+				""
+			]
+		}
+	]
+}

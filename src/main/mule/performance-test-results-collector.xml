@@ -1,0 +1,372 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+    <http:listener-config name="performance-test-metrics-collector-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="performance-test-metrics-collector-config" raml="performance-test-metrics-collector.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" disableValidations="true"/>
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="2c6d4888-41d7-42fb-b120-ace349f26f44" basePath="/api/v2" >
+		<http:request-connection host="deep-monitoring-service-v2.us-e1.cloudhub.io" />
+	</http:request-config>
+	<flow name="performance-test-metrics-collector-main">
+        <http:listener config-ref="performance-test-metrics-collector-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="performance-test-metrics-collector-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="75fa1abd-55a9-4e88-961f-2e76233d19c5">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="1904c5b7-c117-4d44-9898-aa8b91d11b2e">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[501]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7a2054b5-e0b9-4be7-8c5c-385b7a345c03" >
+				<ee:transform doc:name="Send error details in the response" doc:id="5bec8015-6f1a-4773-a951-c59c981f5bd7" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	error_message: error.description,
+	error_detailed_description: error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="httpStatus" ><![CDATA[501]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="performance-test-metrics-collector-console">
+        <http:listener config-ref="performance-test-metrics-collector-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="performance-test-metrics-collector-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="8f74d0ab-55b1-4086-978e-d4d0d4b6f532">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[404]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="post:\collect:performance-test-metrics-collector-config" doc:id="3667fc80-fb06-47ed-86e4-47885178a298">
+		<ee:transform doc:name="Read collector config from query params" doc:id="e88ce06e-618e-4dc8-bd89-91669a4ae941">
+				<ee:message />
+				<ee:variables>
+					<ee:set-variable variableName="config"><![CDATA[%dw 2.0
+var qp = attributes.queryParams
+
+output application/json
+---
+{
+	("build_tag": qp.build_tag) if (qp.build_tag?),
+	("build_url": qp.build_url) if (qp.build_url?),
+	("first_test_start_time": qp.first_test_start_time) if (qp.first_test_start_time?),
+	("test_start_time": qp.test_start_time) if (qp.test_start_time?),
+	("test_end_time": qp.test_end_time) if (qp.test_end_time?),
+	("category": qp.category) if (qp.category?),
+	("component": qp.component) if (qp.component?),
+	("test_case": qp.test_case) if (qp.test_case?),
+	("jmx_file": qp.jmx_file) if (qp.jmx_file?),
+	("tag": qp.tag) if (qp.tag?),
+	("newrelic_app_id": qp.newrelic_app_id as Number) if (qp.newrelic_app_id?),
+	("threads": qp.threads as Number) if (qp.threads?),
+	("ramp_up_time": qp.ramp_up_time as Number) if (qp.ramp_up_time?),
+	("duration": qp.duration as Number) if (qp.duration?),
+	("elasticsearch_env": qp.elasticsearch_env)
+}]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+		<logger level="INFO" doc:name="Log config" doc:id="a9d47afd-e6ab-42cf-91b7-70d3b830252f" message="About to collect performance test results for \n#[vars.config]"/>
+		<try doc:name="Try" doc:id="00a2bd7d-a98f-4f61-bed9-c32a07162b29" >
+			<ee:transform doc:name="Parse Multipart (Split everything and store it in flow vars)" doc:id="13219ebf-4388-496a-801e-1b646443a681">
+             <ee:message>
+             </ee:message>
+             <ee:variables>
+					<ee:set-variable variableName="summaryCsv" ><![CDATA[%dw 2.0
+output application/csv
+---
+payload.parts.summary_csv.content default []]]></ee:set-variable>
+					<ee:set-variable variableName="customTestParams" ><![CDATA[%dw 2.0
+output application/json
+---
+payload.parts.custom_test_params.content default {}]]></ee:set-variable>
+					<ee:set-variable variableName="downstreamImpactNewRelicAppIds" ><![CDATA[%dw 2.0
+output application/json
+---
+(payload.parts.downstream_impact_csv.content default "") splitBy(/\n/)]]></ee:set-variable>
+              </ee:variables>
+         </ee:transform>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="a64f8085-a863-48bb-a830-9c0a4e0f2af3" >
+					<logger level="WARN" doc:name="Logger" doc:id="d32412e0-6762-47de-8a0d-93729224742e" message="There was a problem parsing the multipart/form-data request (maybe the request body is empty). Please make sure you are attaching the necessary files to the request."/>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<flow-ref doc:name="retrieve-and-prepare-all-the-information-flow" doc:id="ee478321-db4a-4f83-93b3-5f4c38e8a566" name="retrieve-and-prepare-all-the-information-flow" />
+		<flow-ref doc:name="push-everything-to-es-flow" doc:id="c4c7e1e6-6a36-4697-be41-a1f1801d00a5" name="push-everything-to-es-flow"/>
+		<ee:transform doc:name="Reply with the config" doc:id="6dec9b13-e81e-4dba-9986-617de39cb25e" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+
+output application/json
+---
+({ timestamp: vars.ciBuildInfo.timestamp }) ++
+( vars.config default {} ) ++
+{ custom_test_params: (vars.customTestParams default {}) } ++
+{ newrelic_adjusted_time_window: vars.newrelicAdjustedTimeWindow } ++
+{ downstream_impact: vars.downstreamImpactNewRelicAppIds } ++
+{ status: "ok" }]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+    </flow>
+	<sub-flow name="retrieve-and-prepare-all-the-information-flow" doc:id="285a5e2d-07c1-415f-8d79-03cb215b5747" >
+		<flow-ref doc:name="retrieve-ci-build-information-flow" doc:id="19480332-056f-474f-bf06-c47e58516e53" name="retrieve-ci-build-information-flow" target="ciBuildInfo" />
+		<scatter-gather doc:name="Scatter-Gather" doc:id="bcae7de3-1495-4068-8903-0c465fb3a2bc" maxConcurrency="1">
+			<route>
+				<ee:transform doc:name="Adjust time window if needed (truncate dates and adjust to 3 minutes minimun)" doc:id="06fe5b8b-759e-4075-b95b-af0c2760f47b" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="newrelicAdjustedTimeWindow" ><![CDATA[%dw 2.0
+		import modules::NewRelicUtils
+		---
+		NewRelicUtils::adjustNewRelicTimeWindowIfNeeded(vars.config.test_start_time, vars.config.test_end_time)]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+				<flow-ref doc:name="retrieve-newrelic-metrics-with-dms-flow" doc:id="3e005487-2cbe-4844-9c0f-8a69879a2da6" name="retrieve-newrelic-metrics-with-dms-flow"/>
+				<ee:transform doc:name="Build test monNewRelicLink" doc:id="f7ae2487-ec3b-415e-94f6-bd6fab338fa7">
+			<ee:message>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="monNewRelicLink"><![CDATA[%dw 2.0
+import modules::NewRelicUtils
+---
+if (vars.config.newrelic_app_id != null)
+	NewRelicUtils::buildNewRelicLink(vars.config.newrelic_app_id, vars.newrelicAdjustedTimeWindow.from, vars.newrelicAdjustedTimeWindow.to)
+else
+	null
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+			</route>
+			<route >
+				<ee:transform doc:name="Process test parameters" doc:id="44dadc61-806f-49fa-b2b7-544ca61a11ee" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="testParams" ><![CDATA[import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapTestParams(vars.config)]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</route>
+			<route >
+				<ee:transform doc:name="Process custom test parameters" doc:id="e2ed3e45-6c0f-43dd-9bfc-96ef0a0ceff6" >
+					<ee:message >
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="customTestParams" ><![CDATA[import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapCustomTestParams(vars.customTestParams)]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</route>
+			<route>
+				<ee:transform doc:name="Process JMeter Summary CSV" doc:id="2a7f33c4-db66-4dbd-836f-976b85073d43">
+					<ee:variables>
+						<ee:set-variable variableName="jmeterSummaryTotal"><![CDATA[import modules::PlatformIndexMapper
+
+output application/json
+---
+(vars.summaryCsv filter ($.Label == 'TOTAL') map PlatformIndexMapper::mapJMeterSummary(vars.config.test_end_time, $))[0]]]></ee:set-variable>
+						<ee:set-variable variableName="jmeterSummaryDetail" ><![CDATA[import modules::PlatformIndexMapper
+
+output application/json
+---
+vars.summaryCsv filter ($.Label != 'TOTAL') map PlatformIndexMapper::mapJMeterSummary(vars.config.test_end_time, $)]]></ee:set-variable>
+					</ee:variables>
+		</ee:transform>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Enrich perf test results and DMS NewRelic metrics" doc:id="066d00cc-d70d-4047-b1fa-cedb409d5d32" >
+			<ee:message />
+			<ee:variables >
+				<ee:set-variable variableName="perfTestResultsSummarized" ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapSummarizedTestResults(
+	vars.ciBuildInfo,
+	vars.monNewRelicLink,
+	vars.testParams,
+	vars.customTestParams,
+	vars.jmeterSummaryTotal,
+	vars.dmsSummarizedAppMetrics[0]
+)
+]]></ee:set-variable>
+				<ee:set-variable variableName="perfTestResultsDetailed" ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapDetailedTestResults(
+	vars.ciBuildInfo,
+	vars.testParams,
+	vars.customTestParams,
+	vars.jmeterSummaryDetail
+)]]></ee:set-variable>
+				<ee:set-variable variableName="dmsSummarizedAppMetrics" ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapDmsNewRelicMetrics(
+	vars.ciBuildInfo,
+	vars.monNewRelicLink,
+	vars.testParams,
+	vars.customTestParams,
+	vars.dmsSummarizedAppMetrics
+)
+]]></ee:set-variable>
+				<ee:set-variable variableName="dmsDetailedAppMetrics" ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapDmsNewRelicMetrics(
+	vars.ciBuildInfo,
+	vars.monNewRelicLink,
+	vars.testParams,
+	vars.customTestParams,
+	vars.dmsDetailedAppMetrics
+)]]></ee:set-variable>
+				<ee:set-variable variableName="dmsSummarizedHostMetrics" ><![CDATA[import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapDmsNewRelicMetrics(
+	vars.ciBuildInfo,
+	vars.monNewRelicLink,
+	vars.testParams,
+	vars.customTestParams,
+	vars.dmsSummarizedHostMetrics
+)]]></ee:set-variable>
+				<ee:set-variable variableName="dmsDetailedHostMetrics" ><![CDATA[%dw 2.0
+import modules::PlatformIndexMapper
+
+output application/json
+---
+PlatformIndexMapper::mapDmsNewRelicMetrics(
+	vars.ciBuildInfo,
+	vars.monNewRelicLink,
+	vars.testParams,
+	vars.customTestParams,
+	vars.dmsDetailedHostMetrics
+)]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+</mule>

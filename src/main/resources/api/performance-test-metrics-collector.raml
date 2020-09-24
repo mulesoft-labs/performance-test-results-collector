@@ -1,0 +1,26 @@
+#%RAML 1.0
+title: Performance Test Metrics Collector
+
+/collect:
+  description: Receives the performance test result files, process them and then pushes the information to the Performance ElasticSearch database.
+  post:
+    queryParameters: 
+      sandbox:
+        description: Indicates if the data must be pushed to the sandbox environment (sandbana). Defaults to false.
+        type: boolean
+        default: false
+        enum: [ true, false]
+        required: false
+      perfci:
+        description: Push data to the PERFCI index even if the job's name doesn't end with _PERFCI.
+        type: boolean
+        default: false
+        enum: [ true, false ]
+        required: false
+    body: 
+      multipart/form-data:
+    responses: 
+      200:
+        body: 
+          application/json:
+            

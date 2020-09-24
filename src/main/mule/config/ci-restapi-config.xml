@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:request-config name="Hudson_CI_HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="1b2b28a6-a932-41e8-adc8-78095a2399d6" >
+		<http:request-connection host="71.19.151.62" port="8180" >
+			<http:authentication >
+				<http:basic-authentication username="${secure::hudson.user}" password="${secure::hudson.password}" />
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+	<http:request-config name="Jenkins_CI_HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="40df07c5-8dbf-4fe8-bf7b-aa0858a3e206" >
+		<http:request-connection host="performance-jenkins.perf.msap.io" protocol="HTTPS">
+			<http:authentication >
+				<http:basic-authentication username="${secure::jenkins.user}" password="${secure::jenkins.apiToken}" />
+			</http:authentication>
+		</http:request-connection>
+	</http:request-config>
+</mule>
